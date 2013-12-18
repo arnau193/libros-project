@@ -27,11 +27,19 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
+
+import edu.upc.eetac.dsa.arnau.libros.api.links.LibrosAPILinkBuilder;
+import edu.upc.eetac.dsa.arnau.libros.api.links.Link;
 import edu.upc.eetac.dsa.arnau.libros.api.model.Libro;
 import edu.upc.eetac.dsa.arnau.libros.api.model.LibroCollection;
 
 @Path("/libros")
 public class LibroResource {
+	@Context
+	private SecurityContext security;
+	
+	@Context
+	private UriInfo uriInfo;
 
 	private DataSource ds = DataSourceSPA.getInstance().getDataSource();
 	String rel = null;
@@ -69,6 +77,8 @@ public class LibroResource {
 				libro.setFecha_edicion(rs.getTimestamp("fecha_edicion"));
 				libro.setFecha_impresion(rs.getTimestamp("fecha_impresion"));
 				libro.setEditorial(rs.getString("editorial"));
+				libro.add(LibrosAPILinkBuilder.buildURILibroId(uriInfo,
+						rs.getString("idlibro"), rel));
 
 			}
 
@@ -96,7 +106,7 @@ public class LibroResource {
 	@GET
 	@Path("/search")
 	@Produces(MediaType.LIBROS_API_LIBRO)
-	public LibroCollection getLibroparecido(
+	public LibroCollection searchLibroparecido(
 			@QueryParam("titulo") String titulo,
 			@QueryParam("autor") String autor, @Context Request req) {
 
@@ -111,23 +121,27 @@ public class LibroResource {
 		} catch (SQLException e) {
 			throw new ServiceUnavailableException(e.getMessage());
 		}
-		
+
 		try {
 			stmt = conn.createStatement();
-			sql=null;
-			if (titulo!=null){
+			sql = null;
+			if (titulo != null) {
 
-			sql = "SELECT * FROM libros WHERE titulo LIKE'%" + titulo + "%'";
-			}
-			else if (autor!=null){
+				sql = "SELECT * FROM libros WHERE titulo LIKE'%" + titulo
+						+ "%'";
+			} else if (autor != null) {
 
 				sql = "SELECT * FROM libros WHERE autor LIKE'%" + autor + "%'";
-				}
-			
-			else{
+			}
+
+			else {
 				throw new BadRequestException("Campos vacios");
 			}
 			ResultSet rs = stmt.executeQuery(sql);
+			if (rs.next()==false){
+				throw new LibroNotFoundException();
+			}
+			else{
 			while (rs.next()) {
 				Libro libro2 = new Libro();
 
@@ -139,13 +153,16 @@ public class LibroResource {
 				libro2.setFecha_edicion(rs.getTimestamp("fecha_edicion"));
 				libro2.setFecha_impresion(rs.getTimestamp("fecha_impresion"));
 				libro2.setEditorial(rs.getString("editorial"));
+				libro2.add(LibrosAPILinkBuilder.buildURILibroId(uriInfo,
+						rs.getString("idlibro"), rel));
+
 
 				libros2.add(libro2);
+			}
 			}
 		} catch (SQLException e) {
 			throw new InternalServerException(e.getMessage());
 		}
-		
 
 		finally {
 			try {
@@ -157,10 +174,11 @@ public class LibroResource {
 			}
 
 		}
+		
 
 		return libros2;
 	}
-
+	
 
 	@GET
 	@Produces(MediaType.LIBROS_API_LIBRO_COLLECTION)
@@ -197,7 +215,14 @@ public class LibroResource {
 				libro.setFecha_edicion(rs.getTimestamp("fecha_edicion"));
 				libro.setFecha_impresion(rs.getTimestamp("fecha_impresion"));
 				libro.setEditorial(rs.getString("editorial"));
+				libro.add(LibrosAPILinkBuilder.buildURILibroId(uriInfo,
+						rs.getString("idlibro"), rel));
+				
+				
+				List<Link> links = new ArrayList<Link>();
+				links.add(LibrosAPILinkBuilder.buildURILibros(uriInfo, rel));
 
+				libros.setLinks(links);
 				libros.add(libro);
 			}
 		} catch (SQLException e) {
@@ -223,125 +248,13 @@ public class LibroResource {
 	@Produces(MediaType.LIBROS_API_LIBRO)
 	public Libro createLibro(Libro libro) {
 
-		Connection conn = null;
-		Statement stmt = null;
-		try {
-			conn = ds.getConnection();
-		} catch (SQLException e) {
-			throw new ServiceUnavailableException(e.getMessage());
-		}
-		try {
-			java.sql.Date fecha_edicion = new java.sql.Date(
-					(libro.getFecha_edicion()).getTime());
+		if (security.isUserInRole("registered")) {
 
-			java.sql.Date fecha_impresion = new java.sql.Date(
-					(libro.getFecha_edicion()).getTime());
-
-			stmt = conn.createStatement();
-			String update = null;
-			update = "INSERT INTO libros (titulo, autor, lengua, edicion, fecha_edicion, fecha_impresion, editorial) VALUES ('"
-					+ libro.getTitulo()
-					+ "','"
-					+ libro.getAutor()
-					+ "','"
-					+ libro.getLengua()
-					+ "', '"
-					+ libro.getEdicion()
-					+ "', '"
-					+ fecha_edicion
-					+ "','"
-					+ fecha_impresion
-					+ "', '"
-					+ libro.getEditorial() + "')";
-			stmt.executeUpdate(update, Statement.RETURN_GENERATED_KEYS);
-			ResultSet rs = stmt.getGeneratedKeys();
-
-			try {
-				String sql = "SELECT * FROM libros WHERE titulo='"
-						+ libro.getTitulo() + "'";
-				rs = stmt.executeQuery(sql);
-
-				if (rs.next()) {
-
-					libro.setIdlibro(rs.getInt("idlibro"));
-					libro.setTitulo(rs.getString("titulo"));
-					libro.setAutor(rs.getString("autor"));
-					libro.setEditorial(rs.getString("editorial"));
-					libro.setLengua(rs.getString("lengua"));
-					libro.setEdicion(rs.getInt("edicion"));
-					libro.setFecha_edicion(rs.getDate("fecha_edicion"));
-					libro.setFecha_impresion(rs.getDate("fecha_impresion"));
-
-				}
-
-				else
-					throw new LibroNotFoundException();
-
-			} catch (SQLException e) {
-				throw new InternalServerException(e.getMessage());
-			}
-
-		} catch (SQLException e) {
-			throw new InternalServerException(e.getMessage());
+			throw new NotAllowedException();
 		}
 
-		finally {
-			try {
-				stmt.close();
-				conn.close();
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		else {
 
-		}
-
-		return libro;
-	}
-
-	@DELETE
-	@Path("/{idlibro}")
-	public void deleteLibro(@PathParam("idlibro") int idlibro) {
-		// TODO Delete record in database stings identified by stingid.
-
-		Connection conn = null;
-		Statement stmt = null;
-		try {
-			conn = ds.getConnection();
-		} catch (SQLException e) {
-			throw new ServiceUnavailableException(e.getMessage());
-		}
-
-		try {
-			stmt = conn.createStatement();
-			String sql;
-			sql = "DELETE FROM resenas WHERE idlibro='" + idlibro + "'";
-			stmt.executeUpdate(sql);
-			sql = "DELETE FROM libros WHERE idlibro='" + idlibro + "'";
-			stmt.executeUpdate(sql);
-
-		} catch (SQLException e) {
-			throw new InternalServerException(e.getMessage());
-		}
-
-		finally {
-			try {
-				stmt.close();
-				conn.close();
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-
-		}
-
-	}
-
-	@PUT
-	@Path("/{idlibro}")
-	@Consumes(MediaType.LIBROS_API_LIBRO)
-	@Produces(MediaType.LIBROS_API_LIBRO)
-	public Libro updateLibro(@PathParam("idlibro") int idlibro, Libro libro) {
 			Connection conn = null;
 			Statement stmt = null;
 			try {
@@ -350,23 +263,178 @@ public class LibroResource {
 				throw new ServiceUnavailableException(e.getMessage());
 			}
 			try {
-				
 				java.sql.Date fecha_edicion = new java.sql.Date(
 						(libro.getFecha_edicion()).getTime());
 
 				java.sql.Date fecha_impresion = new java.sql.Date(
 						(libro.getFecha_edicion()).getTime());
 
+				stmt = conn.createStatement();
+				String update = null;
+				update = "INSERT INTO libros (titulo, autor, lengua, edicion, fecha_edicion, fecha_impresion, editorial) VALUES ('"
+						+ libro.getTitulo()
+						+ "','"
+						+ libro.getAutor()
+						+ "','"
+						+ libro.getLengua()
+						+ "', '"
+						+ libro.getEdicion()
+						+ "', '"
+						+ fecha_edicion
+						+ "','"
+						+ fecha_impresion
+						+ "', '" + libro.getEditorial() + "')";
+				stmt.executeUpdate(update, Statement.RETURN_GENERATED_KEYS);
+				ResultSet rs = stmt.getGeneratedKeys();
+
+				try {
+					String sql = "SELECT * FROM libros WHERE titulo='"
+							+ libro.getTitulo() + "'";
+					rs = stmt.executeQuery(sql);
+
+					if (rs.next()) {
+
+						libro.setIdlibro(rs.getInt("idlibro"));
+						libro.setTitulo(rs.getString("titulo"));
+						libro.setAutor(rs.getString("autor"));
+						libro.setEditorial(rs.getString("editorial"));
+						libro.setLengua(rs.getString("lengua"));
+						libro.setEdicion(rs.getInt("edicion"));
+						libro.setFecha_edicion(rs.getDate("fecha_edicion"));
+						libro.setFecha_impresion(rs.getDate("fecha_impresion"));
+						libro.add(LibrosAPILinkBuilder.buildURILibroId(uriInfo,
+								rs.getString("idlibro"), rel));
+
+
+					}
+
+					else
+						throw new LibroNotFoundException();
+
+				} catch (SQLException e) {
+					throw new InternalServerException(e.getMessage());
+				}
+
+			} catch (SQLException e) {
+				throw new InternalServerException(e.getMessage());
+			}
+
+			finally {
+				try {
+					stmt.close();
+					conn.close();
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+			}
+
+			return libro;
+		}
+	}
+
+	@DELETE
+	@Path("/{idlibro}")
+	public Libro deleteLibro(@PathParam("idlibro") String idlibro) {
+		// TODO Delete record in database stings identified by stingid.
+		
+		if (security.isUserInRole("registered")) {
+
+			throw new ForbiddenException("You are not allowed");
+
+		}
+
+		else {
+
+			Connection conn = null;
+			Statement stmt = null;
+			try {
+				conn = ds.getConnection();
+			} catch (SQLException e) {
+				throw new ServiceUnavailableException(e.getMessage());
+			}
+
+			try {
 				
+				Libro libro = new Libro();
+				
+				stmt = conn.createStatement();
+				String sql ="SELECT * FROM libros WHERE idlibro='" + idlibro + "'";
+				ResultSet rs = stmt.executeQuery(sql);
+				if (rs.next() == false) {
+					throw new LibroNotFoundException();
+				}
+				else{
+				
+
+				sql = "DELETE FROM resenas WHERE idlibro='" + idlibro + "'";
+				stmt.executeUpdate(sql);
+				sql = "DELETE FROM libros WHERE idlibro='" + idlibro + "'";
+				stmt.executeUpdate(sql);
+				libro.add(LibrosAPILinkBuilder.buildURILibroId(uriInfo,
+						idlibro, rel));
+				}
+				
+				return libro;
+				
+
+			} catch (SQLException e) {
+				throw new InternalServerException(e.getMessage());
+			}
+
+			finally {
+				try {
+					stmt.close();
+					conn.close();
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+			}
+		}
+		
+
+	}
+
+	@PUT
+	@Path("/{idlibro}")
+	@Consumes(MediaType.LIBROS_API_LIBRO)
+	@Produces(MediaType.LIBROS_API_LIBRO)
+	public Libro updateLibro(@PathParam("idlibro") int idlibro, Libro libro) {
+
+		if (security.isUserInRole("registered")) {
+
+			throw new ForbiddenException("You are not allowed");
+
+		}
+
+		else {
+			Connection conn = null;
+			Statement stmt = null;
+			try {
+				conn = ds.getConnection();
+			} catch (SQLException e) {
+				throw new ServiceUnavailableException(e.getMessage());
+			}
+			try {
+
+				java.sql.Date fecha_edicion = new java.sql.Date(
+						(libro.getFecha_edicion()).getTime());
+
+				java.sql.Date fecha_impresion = new java.sql.Date(
+						(libro.getFecha_edicion()).getTime());
+
 				stmt = conn.createStatement();
 				String update = null; // TODO: create update query
 				update = "UPDATE libros SET libros.autor='" + libro.getAutor()
-						+ "', libros.titulo= '" + libro.getTitulo()				
+						+ "', libros.titulo= '" + libro.getTitulo()
 						+ "', libros.lengua= '" + libro.getLengua()
-						+ "', libros.edicion= '" + libro.getEdicion()				
+						+ "', libros.edicion= '" + libro.getEdicion()
 						+ "', libros.fecha_edicion= '" + fecha_edicion
 						+ "', libros.fecha_impresion= '" + fecha_impresion
-						+ "', libros.editorial= '" + libro.getEditorial()		
+						+ "', libros.editorial= '" + libro.getEditorial()
 						+ "' WHERE idlibro='" + idlibro + "'";
 				int rows = stmt.executeUpdate(update,
 						Statement.RETURN_GENERATED_KEYS);
@@ -377,7 +445,7 @@ public class LibroResource {
 					ResultSet rs = stmt.executeQuery(sql);
 					if (rs.next()) {
 						libro.setIdlibro(rs.getInt("idlibro"));
-						libro.setAutor(rs.getString("autor"));	
+						libro.setAutor(rs.getString("autor"));
 						libro.setEdicion(rs.getInt("edicion"));
 						libro.setEditorial(rs.getString("editorial"));
 						libro.setFecha_edicion(rs.getDate("fecha_edicion"));
@@ -389,8 +457,7 @@ public class LibroResource {
 					throw new LibroNotFoundException();
 			} catch (SQLException e) {
 				throw new InternalServerException(e.getMessage());
-			}
-			finally {
+			} finally {
 				try {
 					stmt.close();
 					conn.close();
@@ -399,7 +466,7 @@ public class LibroResource {
 					e.printStackTrace();
 				}
 			}
-		return libro;
+			return libro;
+		}
 	}
 }
-

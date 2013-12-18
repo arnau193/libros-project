@@ -3,6 +3,8 @@ package edu.upc.eetac.dsa.arnau.libros.api.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.upc.eetac.dsa.arnau.libros.api.links.Link;
+
 public class Libro {
 
 	private String titulo;
@@ -13,6 +15,7 @@ public class Libro {
 	private java.util.Date fecha_impresion;
 	private String editorial;
 	private int idlibro;
+	private List<Link> links = new ArrayList<Link>();
 
 	public String getTitulo() {
 		return titulo;
@@ -75,7 +78,17 @@ public class Libro {
 	public void setIdlibro(int idlibro) {
 		this.idlibro = idlibro;
 	}
+	public void add(Link link) {
+		links.add(link);
+	}
 
+	public List<Link> getLinks() {
+		return links;
+	}
+
+	public void setLinks(List<Link> links) {
+		this.links = links;
+	}
 
 
 }

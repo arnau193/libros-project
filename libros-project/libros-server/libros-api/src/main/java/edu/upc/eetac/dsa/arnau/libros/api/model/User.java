@@ -3,12 +3,15 @@ package edu.upc.eetac.dsa.arnau.libros.api.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.upc.eetac.dsa.arnau.libros.api.links.Link;
+
 
 public class User {
 
 	public String username;
 	public String name;
 	public String email;
+	private List<Link> links = new ArrayList<Link>();
 
 
 	public String getEmail() {
@@ -33,6 +36,18 @@ public class User {
 
 	public void setUsername(String username) {
 		this.username = username;
+	}
+
+	public void add(Link link) {
+		links.add(link);
+	}
+
+	public List<Link> getLinks() {
+		return links;
+	}
+
+	public void setLinks(List<Link> links) {
+		this.links = links;
 	}
 
 }

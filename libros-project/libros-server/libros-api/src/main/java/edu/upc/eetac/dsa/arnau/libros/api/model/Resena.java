@@ -3,6 +3,8 @@ package edu.upc.eetac.dsa.arnau.libros.api.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.upc.eetac.dsa.arnau.libros.api.links.Link;
+
 public class Resena {
 
 	private int idresena;
@@ -11,6 +13,7 @@ public class Resena {
 	private String name;
 	private String texto;
 	private java.util.Date fecha_creacion;
+	private List<Link> links = new ArrayList<Link>();
 
 
 	public String getUsername() {
@@ -60,5 +63,17 @@ public class Resena {
 	public void setIdresena(int idresena) {
 		this.idresena = idresena;
 	}
-	
+	public void add(Link link) {
+		links.add(link);
+	}
+
+	public List<Link> getLinks() {
+		return links;
+	}
+
+	public void setLinks(List<Link> links) {
+		this.links = links;
+	}
+
+
 }

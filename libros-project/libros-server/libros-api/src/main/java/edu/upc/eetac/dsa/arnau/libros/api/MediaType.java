@@ -8,4 +8,6 @@ public interface MediaType {
 	public final static String LIBROS_API_USER_COLLECTION = "application/vnd.libros.api.user.collection+json";
 	public final static String LIBROS_API_RESENA = "application/vnd.libros.api.resena+json";
 	public final static String LIBROS_API_RESENA_COLLECTION = "application/vnd.libros.api.resena.collection+json";
+	public final static String LIBROS_API_LINK = "application/vnd.dsa.libros.link+json";
+	public final static String LIBROS_API_LINK_COLLECTION = "application/vnd.dsa.libros.link.collection+json";
 }

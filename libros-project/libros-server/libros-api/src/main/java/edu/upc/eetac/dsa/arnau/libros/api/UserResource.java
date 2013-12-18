@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.sql.DataSource;
 import javax.ws.rs.BadRequestException;
@@ -21,12 +23,17 @@ import javax.ws.rs.core.Request;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
+import edu.upc.eetac.dsa.arnau.libros.api.links.LibrosAPILinkBuilder;
+import edu.upc.eetac.dsa.arnau.libros.api.links.Link;
 import edu.upc.eetac.dsa.arnau.libros.api.model.Libro;
 import edu.upc.eetac.dsa.arnau.libros.api.model.User;
 import edu.upc.eetac.dsa.arnau.libros.api.model.UserCollection;
 
 @Path("/users")
 public class UserResource {
+	
+	@Context
+	private UriInfo uriInfo;
 
 	private DataSource ds = DataSourceSPA.getInstance().getDataSource();
 	String rel = null;
@@ -58,7 +65,20 @@ public class UserResource {
 				user.setUsername(rs.getString("username"));
 				user.setName(rs.getString("name"));
 				user.setEmail(rs.getString("email"));
+				user.add(LibrosAPILinkBuilder.buildURIUserName(uriInfo,
+						rs.getString("username"), rel));
+				
+				
+				List<Link> links = new ArrayList<Link>();
+				links.add(LibrosAPILinkBuilder.buildURIUsers(uriInfo, rel));
+
+				users.setLinks(links);
+				
 				users.add(user);
+				
+				
+				
+				
 			}
 		} catch (SQLException e) {
 			throw new InternalServerException(e.getMessage());
@@ -105,6 +125,9 @@ public class UserResource {
 				user.setUsername(rs.getString("username"));
 				user.setName(rs.getString("name"));
 				user.setEmail(rs.getString("email"));
+				user.add(LibrosAPILinkBuilder.buildURIUserName(uriInfo,
+						rs.getString("username"), rel));
+				
 			}
 		} catch (SQLException e) {
 			throw new InternalServerException(e.getMessage());
@@ -126,8 +149,9 @@ public class UserResource {
 
 	@DELETE
 	@Path("/{username}")
-	public void deleteUser(@PathParam("username") String username) {
+	public User deleteUser(@PathParam("username") String username) {
 
+		User user = new User();
 		Connection conn = null;
 		Statement stmt = null;
 		try {
@@ -138,10 +162,12 @@ public class UserResource {
 
 		try {
 			stmt = conn.createStatement();
-			String sql = "DELETE FROM libros WHERE username='" + username + "'";
+			String sql = "DELETE FROM resenas WHERE username='" + username + "'";
 			stmt.executeUpdate(sql);
 			sql = "DELETE FROM users WHERE username='" + username + "'";
 			stmt.executeUpdate(sql);
+			user.add(LibrosAPILinkBuilder.buildURIUserName(uriInfo,
+					username, rel));
 
 		} catch (SQLException e) {
 			throw new InternalServerException(e.getMessage());
@@ -157,7 +183,7 @@ public class UserResource {
 			}
 
 		}
-
+		return user;
 	}
 
 	@PUT
@@ -268,6 +294,8 @@ public class UserResource {
 						+ user.getUsername() + "'";
 				ResultSet rs = stmt.executeQuery(sql);
 				rs.next();
+				user.add(LibrosAPILinkBuilder.buildURIUserName(uriInfo,
+						rs.getString("username"), rel));
 
 				// TODO: Retrieve the created sting from the database to get all
 				// the remaining fields
