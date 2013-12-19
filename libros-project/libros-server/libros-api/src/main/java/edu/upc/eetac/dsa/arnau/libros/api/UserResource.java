@@ -129,6 +129,10 @@ public class UserResource {
 						rs.getString("username"), rel));
 				
 			}
+			
+			else
+				throw new UserNotFoundException();
+			
 		} catch (SQLException e) {
 			throw new InternalServerException(e.getMessage());
 		}
@@ -162,12 +166,21 @@ public class UserResource {
 
 		try {
 			stmt = conn.createStatement();
-			String sql = "DELETE FROM resenas WHERE username='" + username + "'";
+			
+			String sql ="SELECT * FROM users WHERE username='" + username + "'";
+			ResultSet rs = stmt.executeQuery(sql);
+			if (rs.next() == false) {
+				throw new UserNotFoundException();
+			}
+			else{			
+			
+			sql = "DELETE FROM resenas WHERE username='" + username + "'";
 			stmt.executeUpdate(sql);
 			sql = "DELETE FROM users WHERE username='" + username + "'";
 			stmt.executeUpdate(sql);
 			user.add(LibrosAPILinkBuilder.buildURIUserName(uriInfo,
 					username, rel));
+			}
 
 		} catch (SQLException e) {
 			throw new InternalServerException(e.getMessage());

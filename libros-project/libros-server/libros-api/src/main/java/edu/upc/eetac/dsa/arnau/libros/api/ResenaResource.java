@@ -90,7 +90,7 @@ public class ResenaResource {
 					
 					List<Link> links = new ArrayList<Link>();
 					links.add(LibrosAPILinkBuilder.buildURIResenas(uriInfo,rs.getString("idlibro"), rel));
-					resena.setLinks(links);
+					resenas.setLinks(links);
 					resenas.add(resena);
 					
 					//MIRAR LINK
@@ -250,6 +250,7 @@ public class ResenaResource {
 							+ "'and username='" + username + "'";
 					stmt.executeUpdate(sql);
 					String rel = null;
+					
 					resena.add(LibrosAPILinkBuilder.buildURILibroId(uriInfo,
 							idresena, rel));
 					return resena;
